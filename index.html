@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>quest8pix</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<style>body{margin:0}</style>
+</head>
+<body>
+  
+  <canvas id="cvs" width=600 height=400></canvas>
+
+<script>
+
+  function $rect(x,y,c){ctx.fillStyle=c,ctx.fillRect(x-S,y-S,S*2,S*2)}
+  function $rnd(x){var q=Math.random();return $c(x)?~~(q*x):q}
+  function $c(e){return e!=void 0&&e!==null&&(e+'')!='NaN'}
+
+  var ctx,S,H,ct,dt;
+  var hX,hY,hC=1,hT=1,bX,bY,bT;
+  var X,Y,X0,Y0,eX,eY,eC,W,room=['start'],map,wave;
+  
+  init();
+  draw_intro();
+  animate();
+  
+  
+
+  // animate
+	function animate(n) {
+	  
+		requestAnimationFrame( animate );
+
+		n *= 0.001;
+		dt = n-ct;
+		ct = n;
+		H = handleControls();
+		
+		switch(room[0]) {
+		  case 'start':
+		    if(H.fire) run_game();
+		    break;
+		  case 'wood':
+		    return draw_wood();
+		  case 'houseU':
+		    return draw_houseU();
+		  case 'houseD':
+		    return draw_houseD();
+		  case 'chest':
+		    return draw_chest();
+		  case 'battle':
+		    return draw_battle();
+		  case 'lose':
+		    return draw_lose();
+		  case 'win':
+		    return draw_win();
+		}
+	}
+
+  // init
+  function init() {
+
+    ctx = cvs.getContext("2d");
+
+    _initKeyboard();
+    _initGamepad();
+    
+    _addListeners();
+    
+    window.handleControls = _handle;
+    
+    
+    function _initKeyboard(){
+      
+      var a = [1,32,37,38,39,40,65,68,87,83,81,69];
+      
+      window.key=[];
+      
+      for(var i=0; i<a.length; i++)
+        key[a[i]]=0;
+      
+    }
+
+    function _initGamepad(){
+
+      window.gamepad = { dt:0, $1:null, $GP:
+        (navigator.getGamepads||navigator.webkitGetGamepads).bind(navigator)};
+
+      window.checkGP = function() {
+        
+        for(var i=0,j=1,g=gamepad.$GP();i<g.length;i++)
+          if(g[i])
+            gamepad['$'+j++] = g[i];
+          
+      };
+      
+    }
+    
+    function _addListeners() {
+  
+      var c = [ 'keydown','keyup', 'touchstart','touchmove','touchend',
+        'mousedown','mousemove','mouseup','pointerdown','pointermove','pointerup'];
+      
+      for(var i=0;i<c.length;i++)
+        i<2? document.addEventListener(c[i],_input,true):
+          cvs.addEventListener(c[i],_input,true);
+  
+    }
+  
+    // handle
+    function _input(e){
+      
+      switch(e.type[0]){
+        case 'k':
+          
+          //console.log(e.keyCode);
+          
+          if(!key||!$c(key[e.keyCode]))return;
+          
+          "keydown"==e.type&&key[e.keyCode]<1? key[e.keyCode]=1 :
+            "keyup"==e.type&&key[e.keyCode]>0&&(key[e.keyCode]=0);
+          
+          break;
+      }
+    }
+    
+    function _handle() {
+      
+      if(gamepad.$GP) checkGP();
+      
+      var d=0.05, a=[0,0];
+      var b=[{pressed:0},{pressed:0},{pressed:0},{pressed:0}];
+      
+      if(gamepad.$1) {
+        a = gamepad.$1.axes;
+        b = gamepad.$1.buttons;
+      }
+
+      return {
+        up: key[87] || key[38] || a[1]<-d,
+        down: key[83] || key[40] || a[1]>d,
+        left: key[65] || key[37] || a[0]<-d,
+        right: key[68] || key[39] || a[0]>d,
+        fire: b[0].pressed || b[1].pressed || b[2].pressed ||
+          b[3].pressed || key[1] || key[32]
+      }
+    }
+  }
+  
+  // run game
+  function run_game() {
+//room=['houseU'];
+    if(room[0]!='start') return;
+    
+    room=['wood'], X=0, X0=-1, Y=0, Y0=-1, W=0;
+    map = [];
+    while(_gen());
+    
+    function _gen() {
+      for(var i=0,j,k=0,dk=0,t,y,dx,e,de=0;i<60;i++,de++) {
+        j = !$rnd(10);
+        if(j) {
+          if(++k>20||i-dk>15||i-dk<3) return 1;
+          dk = i;
+        }
+        t = i<25||i>34? (j?2:1):0;
+        y = j? 180*($rnd(2)*2-1) : $rnd(320)-160;
+        dx = $rnd(50)-25;
+        c = i<30? 'rgb('+~~(100+i*3)+','+~~(60+i*3)+',50)' : '#4c4';
+        c = j? '#46c' : c;
+        e = j? !$rnd(2) : (de>5&&!$rnd(3)? (de=0,1):0);
+        map[i] = [ t, y, dx, c, e ];
+      }
+      return k<10;
+    }
+
+  }
+
+  // draw intro
+  function draw_intro() {
+    
+    S=300;
+    $rect(300,200,'#ddd');
+    S=40;
+    $rect(165,120,'#aaa'),$rect(255,120,'#aaa');
+    $rect(345,120,'#aaa'),$rect(435,120,'#aaa');
+    $rect(300,280,'#66a');
+
+  }
+
+  // draw wood
+  function draw_wood() {
+
+    S=300;
+    $rect(300,200,'#333');
+    S=20;
+    
+    if(H.left) X = X-dt<0? 0 : X-dt;
+    if(H.right) X = X+dt>62? 62 : X+dt;
+    if(H.up) Y = Y-dt<-1.5? -1.5 : Y-dt;
+    if(H.down) Y = Y+dt>1.5? 1.5 : Y+dt;
+
+    for(var i=~~X-2,a;i<~~X+4;i++) {
+      
+      if(i<0||i>59) continue;
+      
+      a = map[i];
+      if(!a[0]) continue;
+      
+      var x = (i+2-X)*120+a[2];
+      if(x<20||x>580) continue;
+      
+      if(a[0]==2&&x>165&&x<235&&((a[1]>179&&Y>1.208)||(a[1]<-179&&Y<-1.208))) {
+        map[i] = [ 1, $rnd(320)-160, $rnd(50)-25,
+          i<30? 'rgb('+~~(100+i*3)+','+~~(60+i*3)+',50)' : '#4c4'];
+        room = ['house' + (Y>1.208? 'U':'D'),'wood'];
+        hX = 300;
+        hY = Y>1.208? 50:350;
+        hC = 1;
+        hT = 1;
+        return;
+      }
+      
+      if(a[0]==1&&a[4]>0) {
+        map[i][4] = 0;
+        eX=i,eY=$rnd();
+      }
+      
+      $rect( x, 200+a[1], a[3] );
+
+      if(eX>0) {
+        eX+=Math.sign(X-eX)*dt/8;
+        eX = eX>26&&eX<27? 26:eX;
+        eX = eX>32&&eX<33? 33:eX;
+        eY+=Math.sign(Y-eY)*dt/8;
+        if(Math.abs(eX-X)<0.3&&Math.abs(eY-Y)<0.2) {
+          eX=-1;
+          room = ['battle','wood'];
+          hX = 50;
+          hY = 200;
+          bT = ct+0.5;
+          hC = ['#666','#080','#00c','#c00'][W];
+          eC = ~~(1+i/8);
+          wave = [];
+          for(var i=0;i<eC;i++)
+            wave[i] = [ 700, 60+$rnd(320), 75+$rnd(75),75+$rnd(75), 5+$rnd(5), 0,0 ];
+          return;
+        }
+        $rect( (eX+2-X)*100,200+eY*120, '#d00' );
+      }
+      
+    }
+
+    if(X>27.5&&X<31.5) {
+      var c = (ct-(~~ct))/5;
+      $rect( (32-X)*120+Math.sin(c*2)*50,40+c*320,'#066');
+      $rect( (32-X)*120+Math.sin(c*2+0.4)*50,40+(c+0.2)*320,'#066');
+      $rect( (32-X)*120+Math.sin(c*2+0.8)*50,40+(c+0.4)*320,'#066');
+      $rect( (32-X)*120+Math.sin(c*2+1.2)*50,40+(c+0.6)*320,'#066');
+      $rect( (32-X)*120+Math.sin(c*2+1.6)*50,40+(c+0.8)*320,'#066');
+    }
+    
+    if(X>59) {
+      $rect( (63-X)*120,160,'#fff');
+      $rect( (63-X)*120,200,'#fff');
+      $rect( (63-X)*120,240,'#fff');
+      if(X>61&&Y>-0.6&&Y<0.6) {
+        room = ['win'];
+        return;
+      }
+    }
+
+    $rect( 200,200+Y*120,'#aaa');
+
+  }
+
+  // draw house
+  function draw_houseU() {
+
+    S=300;
+    $rect(300,200,'#862');
+    S=30;
+    
+    $rect( 270,30,'#222');
+    $rect( 330,30,'#222');
+
+    var DT = dt*180;
+    if(H.left) hX = hX-DT<30? 30 : hX-DT;
+    if(H.right) hX = hX+DT>570? 570 : hX+DT;
+    if(H.up) hY = hY-DT<30? 30 : hY-DT;
+    if(H.down) hY = hY+DT>370? 370 : hY+DT;
+    
+    if(hY>80) hT=0;
+    if(!hT&&hX>220&&hX<380&&hY<80) {
+      room = ['wood'];
+      return;
+    }
+    
+    if(hC) {
+      $rect( 285,360,'#ff0');
+      $rect( 315,360,'#ff0');
+      if( hX>230&&hX<370&&hY>305 ) {
+        room = ['chest','houseU','wood'];
+        var r = $rnd(20);
+        r = r<1? 3: r<3? 2: r<8? 1:0;
+        W = r>W? r:W;
+        hC = ['#666','#080','#00c','#c00'][r];
+        hT = -1;
+        return;
+      }
+    }
+
+    $rect( hX,hY,'#aaa');
+    
+  }
+	
+  // draw house
+  function draw_houseD() {
+
+    S=300;
+    $rect(300,200,'#682');
+    S=30;
+    
+    $rect( 270,370,'#222');
+    $rect( 330,370,'#222');
+
+    var DT = dt*180;
+    if(H.left) hX = hX-DT<30? 30 : hX-DT;
+    if(H.right) hX = hX+DT>570? 570 : hX+DT;
+    if(H.up) hY = hY-DT<30? 30 : hY-DT;
+    if(H.down) hY = hY+DT>370? 370 : hY+DT;
+    
+    if(hY<320) hT=0;
+    if(!hT&&hX>220&&hX<380&&hY>320) {
+      room = ['wood'];
+      return;
+    }
+    
+    if(hC) {
+      $rect( 285,40,'#ff0');
+      $rect( 315,40,'#ff0');
+      if( hX>230&&hX<370&&hY<95 ) {
+        room = ['chest','houseD','wood'];
+        var r = $rnd(20);
+        r = r<1? 3: r<3? 2: r<8? 1:0;
+        W = r>W? r:W;
+        hC = ['#666','#080','#00c','#c00'][r];
+        hT = -1;
+        return;
+      }
+    }
+
+    $rect( hX,hY,'#aaa');
+    
+  }
+	
+  // draw chest
+  function draw_chest() {
+
+    S=300;
+    $rect(300,200,'#000');
+    S=20;
+    
+    $rect( 200,200,hC),$rect( 240,200,hC);
+    $rect( 250,240,hC),$rect( 250,160,hC);
+    $rect( 290,200,hC),$rect( 330,200,hC);
+    $rect( 370,200,hC),$rect( 410,200,hC);
+
+    if(H.fire) {
+      room = [room[1],'wood'];
+      hC = 0;
+    }
+
+  }
+	
+  // draw battle
+  function draw_battle() {
+
+    S=300;
+    $rect(300,200,'#400');
+    S=10;
+
+    $rect( 602-eC*22,15,'#448' );
+
+    var DT = dt*180;
+    if(H.left) hX = hX-DT<20? 20 : hX-DT;
+    if(H.right) hX = hX+DT>580? 580 : hX+DT;
+    if(H.up) hY = hY-DT<60? 60 : hY-DT;
+    if(H.down) hY = hY+DT>380? 380 : hY+DT;
+    
+    if(ct>bT) {
+      bT=ct+0.8;
+      bX=hX+24;
+      bY=hY-22;
+    }else
+      bX+=dt*500;
+    
+    for(var i=0,w;i<wave.length&&i<2;i++) {
+      w = wave[i];
+      var dx=hX-w[0],dy=hY-w[1],n=1/Math.sqrt(dx*dx+dy*dy);
+      dx*=n,dy*=n;
+      w[5]=(w[5]*9+dx)*0.1;
+      w[6]=(w[6]*9+dy)*0.1;
+      w[0]+=w[5]*dt*w[2];
+      w[1]+=w[6]*dt*w[3];
+      if(w[0]<580) {
+        if(bX>w[0]-10&&bX<w[0]+10&&bY>w[1]-30&&bY<w[1]+10) {
+          w[4]-=W+1;
+          bY = -100;
+          if(w[4]<=0) {
+            eC--;
+            wave.splice(i,1);
+            if(!eC) room = [room[1]];
+            return;
+          }
+        }
+        if(hX>w[0]-5&&hX<w[0]+5&&hY>w[1]-15&&hY<w[1]+5) {
+          room = ['lose'];
+          return;
+        }
+        $rect( w[0],w[1],'#d00'),$rect( w[0],w[1]-22,'#b00');
+      }
+    }
+    
+    $rect( hX,hY,'#888'),$rect( hX,hY-22,'#666');
+    bX>hX&&bX<580&&$rect( bX,bY,hC );
+
+  }
+
+  // draw lose
+  function draw_lose() {
+
+    S=300;
+    $rect(300,200,'#c00');
+    S=15;
+
+    if(H.fire) {
+      room = [];
+      setTimeout(function(){draw_intro();room=['start']},500);
+      return;
+    }
+
+    var D = ~~((~~(ct*4*15)/15-(~~(ct*4)))*15), c='#fff';
+    var y1=110,y2=140,y3=170,y4=200,y5=230,y6=260,y7=290;
+    switch(D) {
+      case 0:
+        $rect( 80,y1,c ),$rect( 80,y2,c ),$rect( 80,y3,c ),$rect( 80,y4,c );
+        $rect( 80,y5,c ),$rect( 80,y6,c ),$rect( 110,y7,c ),$rect( 140,y7,c );
+        break;
+      case 1:
+        $rect( 110,y7,c ),$rect( 140,y7,c ),$rect( 180,y2,c ),$rect( 180,y3,c );
+        $rect( 180,y4,c ),$rect( 180,y5,c ),$rect( 210,y6,c ),$rect( 210,y1,c );
+        break;
+      case 2:
+        $rect( 140,y7,c ),$rect( 180,y2,c ),$rect( 180,y3,c ),$rect( 180,y4,c );
+        $rect( 180,y5,c ),$rect( 180,y6,c ),$rect( 210,y1,c ),$rect( 210,y7,c );
+        break;
+      case 3:
+        $rect( 180,y2,c ),$rect( 180,y3,c ),$rect( 180,y4,c ),$rect( 180,y5,c );
+        $rect( 180,y6,c ),$rect( 210,y1,c ),$rect( 210,y7,c ),$rect( 240,y1,c );
+        break;
+      case 4:
+        $rect( 210,y1,c ),$rect( 210,y7,c ),$rect( 240,y1,c ),$rect( 240,y7,c );
+        $rect( 270,y2,c ),$rect( 270,y3,c ),$rect( 270,y4,c ),$rect( 270,y5,c );
+        break;
+      case 5:
+        $rect( 240,y1,c ),$rect( 240,y7,c ),$rect( 270,y2,c ),$rect( 270,y3,c );
+        $rect( 270,y4,c ),$rect( 270,y5,c ),$rect( 270,y6,c ),$rect( 310,y2,c );
+        break;
+      case 6:
+        $rect( 270,y2,c ),$rect( 270,y3,c ),$rect( 270,y4,c ),$rect( 270,y5,c );
+        $rect( 270,y6,c ),$rect( 310,y2,c ),$rect( 310,y3,c ),$rect( 340,y1,c );
+        break;
+      case 7:
+        $rect( 310,y2,c ),$rect( 310,y3,c ),$rect( 340,y1,c ),$rect( 340,y4,c );
+        $rect( 340,y7,c ),$rect( 370,y1,c ),$rect( 370,y4,c ),$rect( 370,y7,c );
+        break;
+      case 8:
+        $rect( 340,y1,c ),$rect( 340,y4,c ),$rect( 340,y7,c ),$rect( 370,y1,c );
+        $rect( 370,y4,c ),$rect( 370,y7,c ),$rect( 400,y5,c ),$rect( 400,y6,c );
+        break;
+      case 9:
+        $rect( 370,y1,c ),$rect( 370,y4,c ),$rect( 370,y7,c ),$rect( 400,y5,c );
+        $rect( 400,y6,c ),$rect( 440,y2,c ),$rect( 440,y3,c ),$rect( 440,y4,c );
+        break;
+      case 10:
+        $rect( 400,y5,c ),$rect( 400,y6,c ),$rect( 440,y2,c ),$rect( 440,y3,c );
+        $rect( 440,y4,c ),$rect( 440,y5,c ),$rect( 440,y6,c ),$rect( 470,y1,c );
+        break;
+      case 11:
+        $rect( 440,y2,c ),$rect( 440,y3,c ),$rect( 440,y4,c ),$rect( 440,y5,c );
+        $rect( 440,y6,c ),$rect( 470,y1,c ),$rect( 470,y4,c ),$rect( 470,y7,c );
+        break;
+      case 12:
+        $rect( 470,y1,c ),$rect( 470,y4,c ),$rect( 470,y7,c ),$rect( 500,y1,c );
+        $rect( 500,y4,c ),$rect( 500,y7,c ),$rect( 530,y1,c ),$rect( 530,y7,c );
+        break;
+      case 13:
+        $rect( 500,y1,c ),$rect( 500,y4,c ),$rect( 500,y7,c ),$rect( 530,y1,c );
+        $rect( 530,y7,c ),$rect( 80,y1,c ),$rect( 80,y2,c ),$rect( 80,y3,c );
+        break;
+      case 14:
+        $rect( 530,y1,c ),$rect( 530,y7,c ),$rect( 80,y1,c ),$rect( 80,y2,c );
+        $rect( 80,y3,c ),$rect( 80,y4,c ),$rect( 80,y5,c ),$rect( 80,y6,c );
+        break;
+    }
+
+  }
+	
+  // draw win
+  function draw_win() {
+
+    S=300;
+    $rect(300,200,'#00c');
+    S=30;
+
+    if(H.fire) {
+      room = [];
+      setTimeout(function(){draw_intro();room=['start']},500);
+      return;
+    }
+
+    $rect( 300,240,'#cc0' ),$rect( 260,250,'#cc0' ),$rect( 340,250,'#cc0' );
+    $rect( 240,200,'#cc0' ),$rect( 300,150,'#cc0' ),$rect( 360,200,'#cc0' );
+    $rect( 200,160,'#cc0' ),$rect( 400,160,'#cc0' );
+
+  }
+	
+</script>
+</body>
+</html>
